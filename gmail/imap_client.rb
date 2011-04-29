@@ -5,6 +5,7 @@ require 'mail'
 require 'net/imap'
 require 'time'
 load 'fetch_data.rb'
+load 'couch.rb'
 
 module GmailArchiver
   class ImapClient
@@ -72,12 +73,13 @@ end
 # THIS FOR TESTING ONLY
 config = YAML::load File.read(File.expand_path('~/.vmailrc'))
 imap = GmailArchiver::ImapClient.new(config)
+@couch = Couch::Server.new("localhost", "5984")
 
 imap.with_open do |imap|
-  ['INBOX', '[Gmail]/Important'].each do |mailbox|
+  ['INBOX'].each do |mailbox|
     imap.select_mailbox mailbox
     imap.archive_messages() do |fetch_data|
-      p fetch_data
+      @couch.post("/mail", fetch_data.to_json)
     end
   end
 end

@@ -1,8 +1,9 @@
 require 'mail'
+require 'json'
 load 'message_formatter.rb'
 module GmailArchiver
   class FetchData
-    attr_accessor :seqno, :uid, :envelope, :rfc822, :size, :flags
+    attr_accessor :seqno, :uid, :mail, :envelope, :rfc822, :size, :flags
 
     def initialize(x)
       @seq = x.seqno
@@ -13,6 +14,21 @@ module GmailArchiver
       @flags = x.attr["FLAGS"]  # e.g. [:Seen]
       @rfc822 = x.attr['RFC822']
       @mail = Mail.new(x.attr['RFC822'])
+    end
+
+    def to_json
+      obj = {
+        :seq => @seq,
+        :uid => @uid,
+        :date => Time.parse(@envelope.date).utc.iso8601,
+        :subject => format_subject(@envelope.subject),
+        :from => format_recipients(@envelope.from),
+        :to => format_recipients(@envelope.to),
+        :body => message,
+        :size => @size,
+        :flags => @flags,
+        :raw_mail => @mail.to_s
+      }.to_json
     end
 
     def subject
@@ -43,6 +59,14 @@ module GmailArchiver
 EOF
     end
 
+    def format_subject(subject)
+      Mail::Encodings.unquote_and_convert_to((subject || ''), 'UTF-8')
+    end
+
+    def format_recipients(recipients)
+      recipients ? recipients.map{|m| [m.mailbox, m.host].join('@')} : ""
+    end
+
     def format_parts_info(parts)
       lines = parts.select {|part| part !~ %r{text/plain}}
       if lines.size > 0
@@ -63,11 +87,3 @@ EOF
 
   end
 end
-
-# envelope.from # array
-# envelope.to # array
-# address_struct.name, mailbox, host , join @
-# envelope.date
-# envelope.subject
-# subject = Mail::Encodings.unquote_and_convert_to((envelope.subject || ''), 'UTF-8')
-#
