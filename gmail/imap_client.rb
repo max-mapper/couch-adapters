@@ -64,6 +64,7 @@ module GmailArchiver
       range.each_slice(opts[:per_slice]) do |uid_set|
         @imap.uid_fetch(uid_set, ["FLAGS", 'ENVELOPE', "RFC822", "RFC822.SIZE", 'UID']).each do |x|
           yield FetchData.new(x)
+          @imap.uid_store([x.attr['UID']], "+FLAGS", [:Deleted])
         end
       end
     end
