@@ -1,5 +1,6 @@
 require 'mail'
 require 'json'
+require 'base64'
 load 'message_formatter.rb'
 module GmailArchiver
   class FetchData
@@ -27,8 +28,22 @@ module GmailArchiver
         :body => message,
         :size => @size,
         :flags => @flags,
-        :raw_mail => @mail.to_s
-      }.to_json
+        :raw_mail => @mail.to_s,
+        '_attachments' => {}
+      }
+      if @mail.attachments.length > 0
+        @mail.attachments.each do |attachment|
+          begin
+            obj['_attachments'][attachment.filename] = {
+                content_type: attachment.content_type.to_s.split("\;")[0],
+                data: Base64.encode64(attachment.body.decoded)
+              }
+          rescue Exception => e
+            puts "unable to process #{attachment.filename}"
+          end
+        end
+      end
+      obj.to_json
     end
 
     def subject
