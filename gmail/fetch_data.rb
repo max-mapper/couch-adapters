@@ -29,20 +29,8 @@ module GmailArchiver
         :size => @size,
         :flags => @flags,
         :raw_mail => @mail.to_s,
-        '_attachments' => {}
+        '_attachments' => format_attachments
       }
-      if @mail.attachments.length > 0
-        @mail.attachments.each do |attachment|
-          begin
-            obj['_attachments'][attachment.filename] = {
-                content_type: attachment.content_type.to_s.split("\;")[0],
-                data: Base64.encode64(attachment.body.decoded)
-              }
-          rescue Exception => e
-            puts "unable to process #{attachment.filename}"
-          end
-        end
-      end
       obj.to_json
     end
 
@@ -72,6 +60,23 @@ module GmailArchiver
 
 #{formatter.process_body}
 EOF
+    end
+    
+    def format_attachments
+      attachments = {}
+      if @mail.attachments.length > 0
+        @mail.attachments.each do |attachment|
+          begin
+            attachments[attachment.filename] = {
+                content_type: attachment.content_type.to_s.split("\;")[0],
+                data: Base64.encode64(attachment.body.decoded)
+              }
+          rescue Exception => e
+            puts "unable to process #{attachment.filename}"
+          end
+        end
+      end
+      attachments
     end
 
     def format_subject(subject)
