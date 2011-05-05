@@ -32,18 +32,7 @@ module Couch
     end
 
     def request(req)
-      res = Net::HTTP.start(@host, @port) { |http|http.request(req) }
-      unless res.kind_of?(Net::HTTPSuccess)
-        handle_error(req, res)
-      end
-      res
-    end
-
-    private
-
-    def handle_error(req, res)
-      e = RuntimeError.new("#{res.code}:#{res.message}\nMETHOD:#{req.method}\nURI:#{req.path}\n#{res.body}")
-      raise e
+      Net::HTTP.start(@host, @port) { |http|http.request(req) }
     end
   end
 end

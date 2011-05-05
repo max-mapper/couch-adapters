@@ -26,7 +26,7 @@ module GmailArchiver
 
     def with_open
       @imap = Net::IMAP.new(@imap_server, @imap_port, true, nil, false)
-      log @imap.login(@username, @password)
+      @imap.login(@username, @password)
       list_mailboxes
       yield self
     ensure
@@ -34,7 +34,6 @@ module GmailArchiver
     end
 
     def close
-      log "Closing connection"
       Timeout::timeout(5) do
         @imap.close rescue Net::IMAP::BadResponseError
         @imap.disconnect rescue IOError
@@ -44,13 +43,12 @@ module GmailArchiver
     end
 
     def select_mailbox(mailbox)
-      log @imap.select(mailbox)
+      @imap.select(mailbox)
       @mailbox = mailbox
     end
 
     # TODO skip drafts and spam box and all box 
     def list_mailboxes
-      log 'loading mailboxes...'
       @mailboxes = (@imap.list("", "*") || []).select {|struct| struct.attr.none? {|a| a == :Noselect}}. map {|struct| struct.name}.uniq
       log "Loaded mailboxes: #{@mailboxes.inspect}"
     end
@@ -58,9 +56,7 @@ module GmailArchiver
     def archive_messages(opts = {})
       opts = {range: (0..-1), per_slice: 10}.merge(opts)
       uids = @imap.uid_search('ALL')
-      log "Got UIDs for #{uids.size} messages" 
       range = uids[opts[:range]]
-      puts range.inspect
       range.each_slice(opts[:per_slice]) do |uid_set|
         @imap.uid_fetch(uid_set, ["FLAGS", 'ENVELOPE', "RFC822", "RFC822.SIZE", 'UID']).each do |x|
           yield FetchData.new(x)
@@ -80,7 +76,10 @@ imap.with_open do |imap|
   ['INBOX'].each do |mailbox|
     imap.select_mailbox mailbox
     imap.archive_messages() do |fetch_data|
-      @couch.post("/mail", fetch_data.to_json)
+      doc = JSON.parse(@couch.get("/mail/" + fetch_data.gmail_plus_label).body)
+      doc = {} if doc.has_key? 'error'
+      doc.merge! fetch_data.attributes
+      @couch.put("/mail/" + doc['_id'], doc.to_json)
     end
   end
 end

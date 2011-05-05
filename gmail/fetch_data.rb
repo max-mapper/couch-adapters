@@ -16,9 +16,9 @@ module GmailArchiver
       @rfc822 = x.attr['RFC822']
       @mail = Mail.new(x.attr['RFC822'])
     end
-
-    def to_json
-      obj = {
+    
+    def attributes
+      {
         :seq => @seq,
         :uid => @uid,
         :date => Time.parse(@envelope.date).utc.iso8601,
@@ -28,13 +28,12 @@ module GmailArchiver
         :body => message,
         :size => @size,
         :flags => @flags,
-        :label => gmail_plus_label,
+        "_id" => gmail_plus_label,
         :raw_mail => @mail.to_s,
         '_attachments' => format_attachments
-      }
-      obj.to_json
+      }.delete_if{|k,v| v == ""}
     end
-    
+
     def gmail_plus_label
       format_recipients(@envelope.to)[0].split("+")[1].split("@")[0]
     end
