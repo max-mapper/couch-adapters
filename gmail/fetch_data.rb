@@ -28,10 +28,15 @@ module GmailArchiver
         :body => message,
         :size => @size,
         :flags => @flags,
+        :label => gmail_plus_label,
         :raw_mail => @mail.to_s,
         '_attachments' => format_attachments
       }
       obj.to_json
+    end
+    
+    def gmail_plus_label
+      format_recipients(@envelope.to)[0].split("+")[1].split("@")[0]
     end
 
     def subject
