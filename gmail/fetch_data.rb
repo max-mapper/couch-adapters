@@ -34,13 +34,14 @@ module GmailArchiver
         '_attachments' => format_attachments,
         :geometry => format_attachment_gps[:geometry],
         :altitude => format_attachment_gps[:altitude]
-      }.delete_if{|k,v| v == ""}
+      }.delete_if{|k,v| v == "" || v == nil}
     end
 
     def gmail_plus_label
-      format_recipients(@envelope.to)[0].split("+")[1].split("@")[0]
+      recipient = format_recipients(@envelope.to)[0]
+      plus_label = recipient =~ /\+/ ? recipient.split("+")[1].split("@")[0] : nil
     end
-
+    
     def subject
       envelope.subject
     end

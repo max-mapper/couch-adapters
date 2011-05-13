@@ -79,7 +79,11 @@ imap.with_open do |imap|
       doc = JSON.parse(@couch.get("/mail/" + fetch_data.gmail_plus_label).body)
       doc = {} if doc.has_key? 'error'
       doc.merge! fetch_data.attributes
-      @couch.put("/mail/" + doc['_id'], doc.to_json)
+      if doc['_id']
+        @couch.put("/mail/" + doc['_id'], doc.to_json)
+      else
+        @couch.post("/mail", doc.to_json)
+      end
     end
   end
 end
