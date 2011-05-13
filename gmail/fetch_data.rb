@@ -32,7 +32,8 @@ module GmailArchiver
         "_id" => gmail_plus_label,
         :raw_mail => @mail.to_s,
         '_attachments' => format_attachments,
-        :geometry => format_attachment_gps
+        :geometry => format_attachment_gps[:geometry],
+        :altitude => format_attachment_gps[:altitude]
       }.delete_if{|k,v| v == ""}
     end
 
@@ -56,9 +57,6 @@ module GmailArchiver
       envelope.message_id
     end
 
-    # http://www.ruby-doc.org/stdlib/libdoc/net/imap/rdoc/classes/Net/IMAP.html
-    #
-
     def message
       formatter = MessageFormatter.new(@mail)
       message_text = <<-EOF
@@ -71,7 +69,7 @@ EOF
     def to_decimal(dms)
       dms[0].to_f + dms[1].to_f / 60 + dms[2].to_f / 3600
     end
-    
+        
     def to_geojson(exif)
       lon_exif = exif.gps_longitude
       lon = to_decimal(lon_exif.map(&:to_f))
@@ -86,7 +84,7 @@ EOF
     end
     
     def format_attachment_gps
-      geometry = nil
+      geometry, altitude = nil, nil
       if @mail.attachments.length > 0
         @mail.attachments.each do |attachment|    
           next unless attachment['Content-type'].to_s =~ /jpe?g/i
@@ -95,10 +93,12 @@ EOF
           w.write_nonblock(body)
           exif = EXIFR::JPEG.new(r)
           geometry = to_geojson(exif)
+          altitude = exif.gps_altitude.to_f
+          altitude = -altitude if exif.gps_altitude_ref.to_i < 0
           break
         end
       end
-      geometry
+      {geometry: geometry, altitude: altitude}
     end
     
     def format_attachments
@@ -107,9 +107,9 @@ EOF
         @mail.attachments.each do |attachment|
           begin
             attachments[attachment.filename] = {
-                content_type: attachment.content_type.to_s.split("\;")[0],
-                data: Base64.encode64(attachment.body.decoded)
-              }
+              content_type: attachment.content_type.to_s.split("\;")[0],
+              data: Base64.encode64(attachment.body.decoded)
+            }
           rescue Exception => e
             puts "unable to process #{attachment.filename}"
           end
