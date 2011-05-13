@@ -76,13 +76,13 @@ imap.with_open do |imap|
   ['INBOX'].each do |mailbox|
     imap.select_mailbox mailbox
     imap.archive_messages() do |fetch_data|
-      doc = JSON.parse(@couch.get("/mail/" + fetch_data.gmail_plus_label).body)
-      doc = {} if doc.has_key? 'error'
-      doc.merge! fetch_data.attributes
-      if doc['_id']
+      if fetch_data.gmail_plus_label
+        doc = JSON.parse(@couch.get("/mail/" + fetch_data.gmail_plus_label).body)
+        doc = {} if doc.has_key? 'error'
+        doc.merge! fetch_data.attributes
         @couch.put("/mail/" + doc['_id'], doc.to_json)
       else
-        @couch.post("/mail", doc.to_json)
+        @couch.post("/mail", fetch_data.attributes)
       end
     end
   end
