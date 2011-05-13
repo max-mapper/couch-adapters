@@ -20,14 +20,11 @@ module GmailArchiver
     
     def attributes
       {
-        :seq => @seq,
-        :uid => @uid,
         :date => Time.parse(@envelope.date).utc.iso8601,
         :subject => format_subject(@envelope.subject),
         :from => format_recipients(@envelope.from),
         :to => format_recipients(@envelope.to),
         :body => message,
-        :size => @size,
         :flags => @flags,
         "_id" => gmail_plus_label,
         :raw_mail => @mail.to_s,
