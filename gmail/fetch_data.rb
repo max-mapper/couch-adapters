@@ -1,6 +1,7 @@
 require 'mail'
 require 'json'
 require 'base64'
+require 'exifr'
 load 'message_formatter.rb'
 module GmailArchiver
   class FetchData
@@ -30,7 +31,8 @@ module GmailArchiver
         :flags => @flags,
         "_id" => gmail_plus_label,
         :raw_mail => @mail.to_s,
-        '_attachments' => format_attachments
+        '_attachments' => format_attachments,
+        :geometry => format_attachment_gps
       }.delete_if{|k,v| v == ""}
     end
 
@@ -64,6 +66,32 @@ module GmailArchiver
 
 #{formatter.process_body}
 EOF
+    end
+    
+    def to_decimal(dms)
+      dms[0].to_f + dms[1].to_f / 60 + dms[2].to_f / 3600
+    end
+    
+    def format_attachment_gps
+      geometry = nil
+      if @mail.attachments.length > 0
+        @mail.attachments.each do |attachment|    
+          next unless attachment['Content-type'].to_s =~ /jpe?g/i
+          body = attachment.body.decoded      
+          r, w = IO.pipe
+          w.write_nonblock(body)
+          exif = EXIFR::JPEG.new(r)
+          geometry = {
+            :type => "Point", 
+            :coordinates => [
+              to_decimal(exif.gps_longitude.map(&:to_f)), 
+              to_decimal(exif.gps_latitude.map(&:to_f))
+            ]
+          }
+          break
+        end
+      end
+      geometry
     end
     
     def format_attachments
