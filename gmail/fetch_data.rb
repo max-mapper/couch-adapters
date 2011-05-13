@@ -72,6 +72,19 @@ EOF
       dms[0].to_f + dms[1].to_f / 60 + dms[2].to_f / 3600
     end
     
+    def to_geojson(exif)
+      lon_exif = exif.gps_longitude
+      lon = to_decimal(lon_exif.map(&:to_f))
+      lon = -lon if exif.gps_longitude_ref == "W"
+      lat_exif = exif.gps_latitude
+      lat = to_decimal(lat_exif.map(&:to_f))
+      lat = -lat if exif.gps_latitude_ref == "S"
+      {
+        :type => "Point", 
+        :coordinates => [lon, lat]
+      }
+    end
+    
     def format_attachment_gps
       geometry = nil
       if @mail.attachments.length > 0
@@ -81,13 +94,7 @@ EOF
           r, w = IO.pipe
           w.write_nonblock(body)
           exif = EXIFR::JPEG.new(r)
-          geometry = {
-            :type => "Point", 
-            :coordinates => [
-              to_decimal(exif.gps_longitude.map(&:to_f)), 
-              to_decimal(exif.gps_latitude.map(&:to_f))
-            ]
-          }
+          geometry = to_geojson(exif)
           break
         end
       end
