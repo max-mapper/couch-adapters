@@ -82,7 +82,7 @@ imap.with_open do |imap|
         doc.merge! fetch_data.attributes
         @couch.put("/mail/" + doc['_id'], doc.to_json)
       else
-        @couch.post("/mail", fetch_data.attributes)
+        @couch.post("/mail", fetch_data.attributes.to_json)
       end
     end
   end
